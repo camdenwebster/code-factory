@@ -1,0 +1,4 @@
+# compiled binary
+/compound
+# runtime machine state / audit (per-checkout)
+.compound/
