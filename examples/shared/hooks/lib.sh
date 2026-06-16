@@ -19,6 +19,8 @@ set -euo pipefail
 # `cwd` on stdin, so we fall back to $PWD.
 STATE_DIR="${COMPOUND_STATE_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}/.compound}"
 STATE_FILE="$STATE_DIR/state.json"
+# Let the `compound` binary find the same checkpoint without --state on every call.
+export COMPOUND_STATE_DIR="$STATE_DIR"
 
 # Slurp stdin once; every hook event delivers a single JSON object.
 read_input() { HOOK_INPUT="$(cat)"; }

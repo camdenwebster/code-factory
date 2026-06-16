@@ -294,6 +294,43 @@ func cmdAudit(args []string) int {
 	return exitOK
 }
 
+// ---- log -----------------------------------------------------------------
+func cmdLog(args []string) int {
+	fs := flag.NewFlagSet("log", flag.ContinueOnError)
+	c := bindCommon(fs)
+	tail := fs.Int("tail", 0, "show only the last N entries (0 = all)")
+	phase := fs.String("phase", "", "filter by phase")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	s, err := c.load()
+	if err != nil {
+		return fail("%v", err)
+	}
+	entries := s.AuditLog
+	if *phase != "" {
+		filtered := entries[:0:0]
+		for _, e := range entries {
+			if string(e.Phase) == *phase {
+				filtered = append(filtered, e)
+			}
+		}
+		entries = filtered
+	}
+	if *tail > 0 && len(entries) > *tail {
+		entries = entries[len(entries)-*tail:]
+	}
+	if c.json {
+		b, _ := json.MarshalIndent(entries, "", "  ")
+		fmt.Println(string(b))
+		return exitOK
+	}
+	for _, e := range entries {
+		fmt.Printf("%s\t%s\t%s\n", e.At.Format(time.RFC3339), e.Phase, e.Event)
+	}
+	return exitOK
+}
+
 // ---- search (retrieval) --------------------------------------------------
 func cmdSearch(args []string) int {
 	fs := flag.NewFlagSet("search", flag.ContinueOnError)
@@ -379,8 +416,10 @@ func cmdRun(args []string) int {
 	switch *runnerName {
 	case "mock":
 		r = runner.HappyPath()
+	case "claude", "codex":
+		r = runner.NewCLIRunner(*runnerName, filepath.Dir(c.statePath()), *task)
 	default:
-		return fail("runner %q not yet implemented (use --runner mock); claude/codex shell out per spec/cli.md", *runnerName)
+		return fail("unknown runner %q (mock|claude|codex)", *runnerName)
 	}
 	s := core.NewState()
 	s.Scheme = *scheme

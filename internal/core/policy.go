@@ -36,6 +36,17 @@ func Allowed(p Phase, c ToolClass) bool {
 	}
 }
 
+// AllowedClasses returns the tool classes permitted in a phase (stable order).
+func AllowedClasses(p Phase) []ToolClass {
+	var out []ToolClass
+	for _, c := range []ToolClass{ClassRead, ClassShell, ClassTest, ClassMutate, ClassWriteDocs} {
+		if Allowed(p, c) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // AllowedSummary is a human description of a phase's permissions, for hook
 // deny messages.
 func AllowedSummary(p Phase) string {

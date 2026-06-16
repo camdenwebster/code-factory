@@ -16,7 +16,7 @@ Usage: compound <command> [flags]
 State:      init  phase  state  rehydrate
 Policy:     policy            (PreToolUse firewall)
 Verify:     verify            (Stop gate)
-Transition: advance  audit
+Transition: advance  audit  log
 Knowledge:  search  capture
 Driver:     prompt  run       (Model A headless)
 
@@ -47,6 +47,8 @@ func dispatch(args []string) int {
 		return cmdAdvance(rest)
 	case "audit":
 		return cmdAudit(rest)
+	case "log":
+		return cmdLog(rest)
 	case "search":
 		return cmdSearch(rest)
 	case "capture":

@@ -30,7 +30,8 @@ func Execute(s core.MachineState, r runner.Runner, dir string, verify VerifyFn, 
 		} else {
 			unit := runner.WorkUnit{
 				Phase:          s.Phase,
-				AllowedClasses: allowedClasses(s.Phase),
+				AllowedClasses: core.AllowedClasses(s.Phase),
+				ContextRefs:    contextRefs(s),
 				WorkingDir:     dir,
 			}
 			res, err := r.Run(unit)
@@ -57,11 +58,11 @@ func Execute(s core.MachineState, r runner.Runner, dir string, verify VerifyFn, 
 	return s, nil
 }
 
-func allowedClasses(p core.Phase) []core.ToolClass {
-	var out []core.ToolClass
-	for _, c := range []core.ToolClass{core.ClassRead, core.ClassShell, core.ClassTest, core.ClassMutate, core.ClassWriteDocs} {
-		if core.Allowed(p, c) {
-			out = append(out, c)
+func contextRefs(s core.MachineState) []core.ArtifactRef {
+	var out []core.ArtifactRef
+	for _, r := range []*core.ArtifactRef{s.StrategyRef, s.IdeaRef, s.RequirementsRef, s.PlanRef, s.LastDiffRef, s.SolutionRef} {
+		if r != nil {
+			out = append(out, *r)
 		}
 	}
 	return out
