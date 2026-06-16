@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "//": "CompoundEngine integration for Claude Code. Copy the `hooks` block into",
+  "//2": ".claude/settings.json at your repo root. ${CLAUDE_PROJECT_DIR} is expanded",
+  "//3": "by Claude Code to the project root, so these paths resolve as-is.",
+
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/examples/shared/hooks/session-start.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/examples/shared/hooks/pre-tool-use.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/examples/shared/hooks/post-tool-use.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/examples/shared/hooks/stop.sh",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  },
+
+  "permissions": {
+    "//": "Defense in depth: even if a hook is disabled, never allow these.",
+    "deny": ["Bash(rm -rf *)"]
+  }
+}
