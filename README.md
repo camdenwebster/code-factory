@@ -58,8 +58,32 @@ review; the `SolutionDoc` schema enforces the two-track constraints; and a full
 mock run reaches `done` (or, with an unprovable gate, `failed` — never
 `compound`).
 
+## Daily use (Model B)
+
+Drive a cycle in an interactive `claude` / `codex` session with the `/ce-*`
+commands (Claude: `examples/claude-code/.claude/commands/`; Codex:
+`examples/codex/prompts/`):
+
+```
+/ce-brainstorm add offline mode to the sync engine
+/ce-plan        # confidence-gated; searches docs/solutions first
+/ce-work        # Stop hook won't end the turn on red tests
+/ce-review      # gate records Evidence; P1s loop back
+/ce-compound    # capture the learning -> docs/solutions/
+/ce-status      # phase + audit trail anytime
+```
+
+## CI
+
+`.github/workflows/ci.yml` runs on every push/PR: `gofmt`, `go build`, `go vet`,
+`go test -race`, `staticcheck`, and `exhaustive` (which recovers the
+compile-time enum-switch exhaustiveness Go lacks vs Swift sum types), plus
+`shellcheck` + `bash -n` on the hook scripts.
+
 ## Status
 
-Core + persistence + gate + headless driver are implemented and tested. The
-live `claude`/`codex` runners and the `/ce-*` slash commands are the remaining
-wiring; the contracts for both are in `spec/cli.md`.
+Implemented and tested: the pure core, persistence, the verification gate, the
+headless driver, the live `claude`/`codex` runners, and the full `/ce-*` command
+set for both harnesses. Remaining is mostly real-world hardening (streaming
+parse of agent tool-use for post-hoc policy enforcement in Model A; the outer
+pulse→next-cycle driver). Contracts for everything are in `spec/cli.md`.

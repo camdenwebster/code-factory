@@ -30,7 +30,8 @@ current_phase() {
   [[ -f "$STATE_FILE" ]] && jq -r '.phase // "brainstorm"' "$STATE_FILE" || echo brainstorm
 }
 current_scheme() {
-  [[ -f "$STATE_FILE" ]] && jq -r '.scheme // empty' "$STATE_FILE" || true
+  [[ -f "$STATE_FILE" ]] || return 0
+  jq -r '.scheme // empty' "$STATE_FILE" 2>/dev/null || true
 }
 
 # ---- Map a harness tool name + its input to an abstract policy class --------

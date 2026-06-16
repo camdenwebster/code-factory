@@ -22,11 +22,7 @@ func Allowed(p Phase, c ToolClass) bool {
 	case PhaseStrategy, PhaseIdeate, PhaseBrainstorm, PhasePlan:
 		return c == ClassRead // WHAT, not HOW
 	case PhaseWork, PhaseDebug:
-		switch c {
-		case ClassRead, ClassShell, ClassTest, ClassMutate, ClassWriteDocs:
-			return true
-		}
-		return false
+		return c != ClassOther // every classified capability; only unknowns denied
 	case PhaseCodeReview:
 		return c == ClassRead || c == ClassTest // verify, don't edit
 	case PhaseCompound, PhaseCompoundRefresh, PhaseProductPulse:
