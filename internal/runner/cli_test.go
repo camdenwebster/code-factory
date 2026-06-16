@@ -52,6 +52,22 @@ func TestCLIRunnerClaudeUnlocksWork(t *testing.T) {
 	}
 }
 
+func TestClaudeToolsCodeReviewIsTestScoped(t *testing.T) {
+	tools := claudeTools(core.PhaseCodeReview)
+	if slices.Contains(tools, "Bash") {
+		t.Fatalf("codeReview must not grant bare Bash (allows arbitrary mutation): %v", tools)
+	}
+	if !slices.Contains(tools, "Bash(swift test:*)") {
+		t.Fatalf("codeReview should allow command-scoped test runs: %v", tools)
+	}
+}
+
+func TestClaudeToolsWorkHasFullBash(t *testing.T) {
+	if !slices.Contains(claudeTools(core.PhaseWork), "Bash") {
+		t.Fatal("work should grant full Bash")
+	}
+}
+
 func TestCLIRunnerCodexSandboxPerPhase(t *testing.T) {
 	dir := t.TempDir()
 	var gotArgs []string

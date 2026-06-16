@@ -46,12 +46,19 @@ classify_tool() {
     Edit|Write|apply_patch)
       local fp
       fp="$(jqr '.tool_input.file_path // .tool_input.path // .tool_input.input.path // ""')"
-      if [[ "$fp" == *"/docs/"* || "$fp" == docs/* ]]; then echo write_docs; else echo mutate; fi ;;
+      # Reject any traversal; only un-escaped docs/ paths count as write_docs.
+      if [[ "$fp" != *..* && ( "$fp" == docs/* || "$fp" == */docs/* ) ]]; then
+        echo write_docs
+      else echo mutate; fi ;;
     Bash|shell)
       local cmd
       # Claude: .tool_input.command is a string. Codex: ["bash","-lc","..."].
       cmd="$(jqr '.tool_input.command | if type=="array" then join(" ") else (.//"") end')"
-      if [[ "$cmd" =~ (swift[[:space:]]+test|swift[[:space:]]+build|xcodebuild) ]]; then
+      # Chained/substituting commands could smuggle an edit into a test phase;
+      # treat them as plain shell (fail closed), only a clean test cmd is test.
+      if [[ "$cmd" == *[\;\&\|\<\>\`]* || "$cmd" == *'$('* || "$cmd" == *$'\n'* ]]; then
+        echo shell
+      elif [[ "$cmd" =~ ^[[:space:]]*(swift[[:space:]]+test|swift[[:space:]]+build|xcodebuild)([[:space:]]|$) ]]; then
         echo test
       else echo shell; fi ;;
     mcp__*) echo read ;;   # tighten per-server in production

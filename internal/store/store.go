@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -20,8 +21,18 @@ func (s Store) Write(d SolutionDoc, filename string) (core.ArtifactRef, error) {
 	if err := d.Validate(); err != nil {
 		return core.ArtifactRef{}, err
 	}
-	rel := filepath.Join("docs", "solutions", d.ProblemType.CategoryDir(), filename)
+	// Sanitize the filename: take only the base name so a value like
+	// "../../../../escaped.md" cannot write outside the solutions tree.
+	name := filepath.Base(filepath.Clean(filename))
+	if name == "." || name == ".." || name == string(filepath.Separator) || name == "" {
+		return core.ArtifactRef{}, fmt.Errorf("invalid filename %q", filename)
+	}
+	rel := filepath.Join("docs", "solutions", d.ProblemType.CategoryDir(), name)
 	abs := filepath.Join(s.Root, rel)
+	// Belt and suspenders: the resolved path must stay under docs/solutions/.
+	if !strings.HasPrefix(abs, filepath.Clean(s.solutionsDir())+string(filepath.Separator)) {
+		return core.ArtifactRef{}, fmt.Errorf("path %q escapes the solutions directory", filename)
+	}
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		return core.ArtifactRef{}, err
 	}

@@ -54,3 +54,24 @@ func TestWriteAndSearch(t *testing.T) {
 		t.Fatalf("search want 1 hit, got %d (err %v)", len(hits), err)
 	}
 }
+
+func TestWriteRejectsTraversalFilename(t *testing.T) {
+	root := t.TempDir()
+	s := Store{Root: root}
+	d := SolutionDoc{
+		Module: "m", Date: "2026-06-16", Component: "c",
+		ProblemType: ToolingDecision, Severity: Low, Body: "x",
+	}
+	// A filename that tries to escape must be sanitized to its base name and
+	// land inside docs/solutions/, never at the repo root or above.
+	r, err := s.Write(d, "../../../../escaped.md")
+	if err != nil {
+		t.Fatalf("sanitized write should succeed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "escaped.md")); err == nil {
+		t.Fatal("traversal filename escaped docs/solutions to the repo root")
+	}
+	if want := "docs/solutions/tooling-decisions/escaped.md"; r.Path != want {
+		t.Fatalf("ref path = %q, want %q", r.Path, want)
+	}
+}

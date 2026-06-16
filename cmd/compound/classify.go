@@ -1,13 +1,16 @@
 package main
 
 import (
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/camdenwebster/code-factory/internal/core"
 )
 
-var reTest = regexp.MustCompile(`(swift\s+test|swift\s+build|xcodebuild)`)
+// reTest matches a clean build/test invocation anchored at the start of the
+// command (not merely containing the words somewhere).
+var reTest = regexp.MustCompile(`^\s*(swift\s+test|swift\s+build|xcodebuild)(\s|$)`)
 
 // classifyTool maps a harness tool name + its input JSON to an abstract
 // ToolClass. It is the single source of truth the bash hook fallback mirrors,
@@ -20,13 +23,12 @@ func classifyTool(name string, input map[string]any) core.ToolClass {
 	case "NotebookEdit", "MultiEdit":
 		return core.ClassMutate
 	case "Edit", "Write", "apply_patch":
-		fp := firstString(input, "file_path", "path")
-		if strings.Contains(fp, "/docs/") || strings.HasPrefix(fp, "docs/") {
+		if isDocsPath(firstString(input, "file_path", "path")) {
 			return core.ClassWriteDocs
 		}
 		return core.ClassMutate
 	case "Bash", "shell":
-		if reTest.MatchString(commandString(input)) {
+		if looksLikeTest(commandString(input)) {
 			return core.ClassTest
 		}
 		return core.ClassShell
@@ -35,6 +37,31 @@ func classifyTool(name string, input map[string]any) core.ToolClass {
 		return core.ClassRead
 	}
 	return core.ClassOther
+}
+
+// isDocsPath reports whether a write target resolves under docs/ WITHOUT
+// escaping it. The path is cleaned first, so "docs/../cmd/main.go" collapses to
+// "cmd/main.go" and is correctly classified as a mutation, not a docs write.
+func isDocsPath(fp string) bool {
+	if fp == "" {
+		return false
+	}
+	c := filepath.ToSlash(filepath.Clean(fp))
+	if c == ".." || strings.HasPrefix(c, "../") {
+		return false // escapes upward
+	}
+	return strings.HasPrefix(c, "docs/") || strings.Contains(c, "/docs/")
+}
+
+// looksLikeTest reports whether a shell command is a clean, single build/test
+// invocation. A command that chains or substitutes (";", "&&", "|", "$(", ...)
+// could smuggle an edit past a test-only phase, so it is NOT a test — it falls
+// through to the more-restricted shell class. Fail closed.
+func looksLikeTest(cmd string) bool {
+	if strings.ContainsAny(cmd, ";&|<>\n\x60") || strings.Contains(cmd, "$(") {
+		return false
+	}
+	return reTest.MatchString(cmd)
 }
 
 func firstString(m map[string]any, keys ...string) string {

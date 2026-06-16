@@ -91,9 +91,12 @@ func claudeTools(p core.Phase) []string {
 }
 
 var claudeToolsForClass = map[core.ToolClass][]string{
-	core.ClassRead:      {"Read", "Grep", "Glob"},
-	core.ClassShell:     {"Bash"},
-	core.ClassTest:      {"Bash"},
+	core.ClassRead:  {"Read", "Grep", "Glob"},
+	core.ClassShell: {"Bash"},
+	// Test phases get COMMAND-SCOPED Bash, never bare Bash: codeReview is
+	// read + build/test only, so a reviewer must not be able to run `sed -i`
+	// or `rm` via an unrestricted Bash grant.
+	core.ClassTest:      {"Bash(swift test:*)", "Bash(swift build:*)", "Bash(xcodebuild:*)"},
 	core.ClassMutate:    {"Edit", "Write", "MultiEdit"},
 	core.ClassWriteDocs: {"Write"},
 }

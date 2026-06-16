@@ -6,10 +6,16 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 read_input
 
-phase="$(current_phase)"
 tool="$(jqr '.tool_name')"
-ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-mkdir -p "$STATE_DIR"
-jq -nc --arg p "$phase" --arg t "$tool" --arg at "$ts" \
-  '{phase:$p,event:$t,at:$at}' >> "$STATE_DIR/audit.log"
+# Prefer the binary so the entry lands in MachineState.AuditLog — the same trail
+# `compound log` and /ce-status read. Fall back to a side file only without it.
+if have_compound; then
+  compound audit --event "$tool" >/dev/null 2>&1 || true
+else
+  phase="$(current_phase)"
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  mkdir -p "$STATE_DIR"
+  jq -nc --arg p "$phase" --arg t "$tool" --arg at "$ts" \
+    '{phase:$p,event:$t,at:$at}' >> "$STATE_DIR/audit.log"
+fi
 exit 0
