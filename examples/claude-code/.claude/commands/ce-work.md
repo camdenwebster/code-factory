@@ -4,7 +4,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 You are in the **work** phase. Implement the plan in `docs/plans/`.
 
-!`compound state`
+!`compound init --phase work --if-absent >/dev/null; compound state`
 
 Rules:
 - Edit/write code and run the test suite as you go.

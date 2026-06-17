@@ -5,10 +5,10 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 You are in the **debug** phase (bug track). Reproduce, then fix.
 
+!`compound init --phase debug --track bug --if-absent >/dev/null; compound state`
+
 Search prior fixes FIRST:
 !`compound search --terms "$ARGUMENTS"`
-
-!`compound state`
 
 Rules:
 - Write a failing test that reproduces the bug, then make it pass.

@@ -69,22 +69,79 @@ func cmdInit(args []string) int {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	c := bindCommon(fs)
 	phase := fs.String("phase", string(core.PhaseBrainstorm), "initial phase")
+	track := fs.String("track", string(core.TrackKnowledge), "initial track (knowledge|bug)")
 	scheme := fs.String("scheme", "", "xcodebuild scheme (unset => swift test)")
 	force := fs.Bool("force", false, "overwrite existing checkpoint")
+	ifAbsent := fs.Bool("if-absent", false, "no-op (exit 0) if a checkpoint already exists")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
-	if checkpoint.Exists(c.statePath()) && !*force {
-		return fail("checkpoint already exists at %s (use --force)", c.statePath())
+	if checkpoint.Exists(c.statePath()) {
+		if *ifAbsent {
+			return exitOK // a cycle is already running; leave it untouched
+		}
+		if !*force {
+			return fail("checkpoint already exists at %s (use --force)", c.statePath())
+		}
 	}
 	s := core.NewState()
 	s.Phase = core.Phase(*phase)
+	s.Track = core.Track(*track)
 	s.Scheme = *scheme
 	if err := checkpoint.Save(c.statePath(), s); err != nil {
 		return fail("%v", err)
 	}
 	fmt.Printf("initialized %s at phase=%s\n", c.statePath(), s.Phase)
 	return exitOK
+}
+
+// ---- start (triage front door) -------------------------------------------
+func cmdStart(args []string) int {
+	fs := flag.NewFlagSet("start", flag.ContinueOnError)
+	c := bindCommon(fs)
+	task := fs.String("task", "", "the request to triage")
+	as := fs.String("as", "", "override the category (feature|bug|chore|strategy|ideate|refresh|pulse)")
+	scheme := fs.String("scheme", "", "xcodebuild scheme")
+	force := fs.Bool("force", false, "restart even if a cycle is in progress")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if *task == "" && *as == "" {
+		return fail("--task or --as is required")
+	}
+
+	tr, err := triage(*task, *as)
+	if err != nil {
+		return fail("%v", err)
+	}
+	if checkpoint.Exists(c.statePath()) && !*force {
+		return fail("a cycle is already in progress at %s (use --force to restart)", c.statePath())
+	}
+	s := core.NewState()
+	s.Phase, s.Track, s.Scheme = tr.Phase, tr.Track, *scheme
+	if err := checkpoint.Save(c.statePath(), s); err != nil {
+		return fail("%v", err)
+	}
+	if c.json {
+		b, _ := json.MarshalIndent(tr, "", "  ")
+		fmt.Println(string(b))
+	} else {
+		fmt.Printf("triaged as %s → starting in phase '%s' (track %s)\n", tr.Category, tr.Phase, tr.Track)
+	}
+	return exitOK
+}
+
+// triage resolves a category from an explicit override or the heuristic.
+func triage(task, as string) (core.TriageResult, error) {
+	if as != "" {
+		cat, ok := core.ParseCategory(as)
+		if !ok {
+			return core.TriageResult{}, fmt.Errorf("unknown category %q", as)
+		}
+		p, trk := cat.Seed()
+		return core.TriageResult{Category: cat, Phase: p, Track: trk}, nil
+	}
+	return core.Triage(task), nil
 }
 
 // ---- phase ---------------------------------------------------------------
@@ -407,6 +464,7 @@ func cmdRun(args []string) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	c := bindCommon(fs)
 	task := fs.String("task", "", "task description")
+	as := fs.String("as", "", "override triage category (feature|bug|chore|strategy|ideate|refresh|pulse)")
 	runnerName := fs.String("runner", "mock", "mock|claude|codex")
 	scheme := fs.String("scheme", "", "xcodebuild scheme")
 	if err := fs.Parse(args); err != nil {
@@ -421,16 +479,21 @@ func cmdRun(args []string) int {
 	default:
 		return fail("unknown runner %q (mock|claude|codex)", *runnerName)
 	}
-	s := core.NewState()
-	s.Scheme = *scheme
-	verifyFn := func(dir, sch string) (core.Event, error) { return verify.Verify(dir, sch, verify.Exec) }
-	save := func(st core.MachineState) error { return checkpoint.Save(c.statePath(), st) }
-
-	final, err := orchestrator.Execute(s, r, c.dir, verifyFn, save)
+	// Triage the task to pick the starting phase instead of always brainstorm.
+	tr, err := triage(*task, *as)
 	if err != nil {
 		return fail("%v", err)
 	}
-	fmt.Printf("task %q finished: phase=%s\n", *task, final.Phase)
+	s := core.NewState()
+	s.Phase, s.Track, s.Scheme = tr.Phase, tr.Track, *scheme
+	verifyFn := func(dir, sch string) (core.Event, error) { return verify.Verify(dir, sch, verify.Exec) }
+	save := func(st core.MachineState) error { return checkpoint.Save(c.statePath(), st) }
+
+	final, ferr := orchestrator.Execute(s, r, c.dir, verifyFn, save)
+	if ferr != nil {
+		return fail("%v", ferr)
+	}
+	fmt.Printf("task %q triaged as %s; finished: phase=%s\n", *task, tr.Category, final.Phase)
 	if final.Phase == core.PhaseFailed {
 		fmt.Fprintln(os.Stderr, "reason: "+final.FailureReason)
 		return exitFail

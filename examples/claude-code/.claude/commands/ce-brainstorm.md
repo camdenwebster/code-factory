@@ -5,8 +5,9 @@ allowed-tools: Read, Grep, Glob, Bash(compound:*)
 ---
 Begin a new cycle for: **$ARGUMENTS**
 
-Initialize the machine and show state:
-!`compound init --force >/dev/null && compound state`
+Seed the machine for this phase (no-op if a cycle is already running — use
+`/ce-start` to begin a fresh one), then show state:
+!`compound init --phase brainstorm --if-absent >/dev/null; compound state`
 
 You are in the **brainstorm** phase. Rules:
 - Read-only — no code, no plans. Capture requirements (WHAT, not HOW).

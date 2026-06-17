@@ -5,6 +5,8 @@ allowed-tools: Read, Grep, Glob, Bash(compound:*)
 ---
 You are in the **plan** phase (read-only).
 
+!`compound init --phase plan --if-absent >/dev/null; compound state`
+
 Search captured solutions FIRST (local-first retrieval beats web research):
 !`compound search --terms "$ARGUMENTS"`
 

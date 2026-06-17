@@ -38,16 +38,35 @@ exactly one policy/transition implementation.
 
 ---
 
+## 0. Entry — triage front door
+
+### `compound start`
+Classify a request and seed the cycle in the right phase, instead of always
+starting at `brainstorm`.
+```
+compound start --task "<request>" [--as CATEGORY] [--scheme NAME] [--force]
+```
+- Triage maps the task to a `CATEGORY` and a seed `(phase, track)`:
+  `feature`→brainstorm · `bug`→brainstorm (bug track) · `chore`→plan ·
+  `strategy`→strategy · `ideate`→ideate · `refresh`→compoundRefresh ·
+  `pulse`→productPulse.
+- `--as` overrides the heuristic. Refuses if a cycle is already in progress
+  unless `--force`. `--json` prints the `TriageResult`.
+- The classifier is a deterministic default; brainstorm's `routeToDebug` remains
+  the in-loop safety net for a misclassified bug.
+
 ## 1. State & inspection
 
 ### `compound init`
-Create a fresh checkpoint.
+Create a fresh checkpoint (lower-level than `start`; no triage).
 ```
 compound init [--phase brainstorm] [--track knowledge] [--scheme NAME]
-              [--threshold 0.70] [--max-attempts 3] [--max-deepens 2]
+              [--force] [--if-absent]
 ```
 - `--scheme` set ⇒ verification uses `xcodebuild`; unset ⇒ `swift test` (SwiftPM).
-- Writes `MachineState` to `--state`. Idempotent with `--force`.
+- `--force` overwrites an existing checkpoint; `--if-absent` makes it a no-op
+  (exit 0) when one already exists — used by the `/ce-<phase>` commands to seed
+  state on a fresh repo without clobbering a running cycle.
 
 ### `compound phase`
 Print the current phase string (e.g. `plan`). Exit `0`.
