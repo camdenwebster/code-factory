@@ -6,6 +6,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 read_input
 
+[[ -z "$(current_phase)" ]] && exit 0   # no active cycle => nothing to audit
 tool="$(jqr '.tool_name')"
 # Prefer the binary so the entry lands in MachineState.AuditLog — the same trail
 # `compound log` and /ce-status read. Fall back to a side file only without it.

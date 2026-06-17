@@ -16,8 +16,8 @@ if [[ -f "$STATE_FILE" ]]; then
     "plan=\(.planRef // "none") attempts=\(.attempts // 0). " +
     "Honor the per-phase tool policy; advance only via /ce-<phase>."' "$STATE_FILE")"
 else
-  mkdir -p "$STATE_DIR"
-  printf '%s\n' '{"phase":"brainstorm","track":"knowledge","attempts":0,"deepenCount":0,"scheme":null}' > "$STATE_FILE"
-  ctx="CompoundEngine initialized at phase=brainstorm. This repo follows the Compounding Engineering loop: brainstorm → plan → work → codeReview → compound. Read-only research until /ce-work; tests must pass before any turn in work/codeReview can end."
+  # No checkpoint => no active cycle. Do NOT seed a phase here; the triage front
+  # door (/ce-start) is the only thing that begins a cycle.
+  ctx="No CompoundEngine cycle in progress. This repo follows the Compounding Engineering loop (brainstorm → plan → work → codeReview → compound). Run /ce-start <request> to triage and begin — do not assume a phase until then."
 fi
 emit_session_context "$ctx"

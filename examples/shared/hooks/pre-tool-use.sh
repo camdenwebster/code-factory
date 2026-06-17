@@ -12,6 +12,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 read_input
 
 phase="$(current_phase)"
+[[ -z "$phase" ]] && exit 0   # no active cycle => no firewall to enforce
 tool="$(jqr '.tool_name')"
 cls="$(classify_tool "$tool")"
 

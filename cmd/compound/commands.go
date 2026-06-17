@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -52,9 +53,14 @@ func (c *ctx) statePath() string {
 	return filepath.Join(c.dir, ".compound", "state.json")
 }
 
+// errNoCycle is returned by load() when no checkpoint exists yet — i.e. there
+// is no active CompoundEngine cycle. Inspection commands report this instead of
+// silently fabricating a brainstorm phase.
+var errNoCycle = errors.New("no active cycle")
+
 func (c *ctx) load() (core.MachineState, error) {
 	if !checkpoint.Exists(c.statePath()) {
-		return core.NewState(), nil
+		return core.MachineState{}, errNoCycle
 	}
 	return checkpoint.Load(c.statePath())
 }
@@ -175,6 +181,10 @@ func cmdPhase(args []string) int {
 		return exitUsage
 	}
 	s, err := c.load()
+	if errors.Is(err, errNoCycle) {
+		fmt.Println("none")
+		return exitOK
+	}
 	if err != nil {
 		return fail("%v", err)
 	}
@@ -190,6 +200,14 @@ func cmdState(args []string) int {
 		return exitUsage
 	}
 	s, err := c.load()
+	if errors.Is(err, errNoCycle) {
+		if c.json {
+			fmt.Println(`{"phase":"none"}`)
+		} else {
+			fmt.Println("no active cycle — run `/ce-start <request>` (or `compound start`) to begin")
+		}
+		return exitOK
+	}
 	if err != nil {
 		return fail("%v", err)
 	}
@@ -211,6 +229,11 @@ func cmdRehydrate(args []string) int {
 		return exitUsage
 	}
 	s, err := c.load()
+	if errors.Is(err, errNoCycle) {
+		fmt.Print("No CompoundEngine cycle in progress. Start one with `/ce-start <request>` " +
+			"(triage + seed). Do not assume a phase or run phase commands until then.")
+		return exitOK
+	}
 	if err != nil {
 		return fail("%v", err)
 	}
@@ -240,6 +263,13 @@ func cmdPolicy(args []string) int {
 	phase := core.Phase(*phaseOverride)
 	if phase == "" {
 		s, err := c.load()
+		if errors.Is(err, errNoCycle) {
+			// No active cycle => no firewall to enforce.
+			if c.json {
+				fmt.Println(`{"decision":"allow","reason":"no active cycle"}`)
+			}
+			return exitOK
+		}
 		if err != nil {
 			return fail("%v", err)
 		}
@@ -364,6 +394,9 @@ func cmdAudit(args []string) int {
 		return exitUsage
 	}
 	s, err := c.load()
+	if errors.Is(err, errNoCycle) {
+		return exitOK // no cycle: nothing to audit, and do NOT create state
+	}
 	if err != nil {
 		return fail("%v", err)
 	}
@@ -384,6 +417,9 @@ func cmdLog(args []string) int {
 		return exitUsage
 	}
 	s, err := c.load()
+	if errors.Is(err, errNoCycle) {
+		return exitOK // no cycle: empty trail
+	}
 	if err != nil {
 		return fail("%v", err)
 	}

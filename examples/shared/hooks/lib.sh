@@ -27,7 +27,8 @@ read_input() { HOOK_INPUT="$(cat)"; }
 jqr() { printf '%s' "${HOOK_INPUT:-}" | jq -r "$1" 2>/dev/null || true; }
 
 current_phase() {
-  [[ -f "$STATE_FILE" ]] && jq -r '.phase // "brainstorm"' "$STATE_FILE" || echo brainstorm
+  [[ -f "$STATE_FILE" ]] || return 0   # no checkpoint => no active cycle (empty)
+  jq -r '.phase // ""' "$STATE_FILE"
 }
 current_scheme() {
   [[ -f "$STATE_FILE" ]] || return 0

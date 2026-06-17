@@ -10,6 +10,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 read_input
 
 phase="$(current_phase)"
+[[ -z "$phase" ]] && exit 0   # no active cycle => nothing to gate or advance
 
 # 1. Gate ------------------------------------------------------------------
 case "$phase" in
