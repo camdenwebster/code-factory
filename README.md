@@ -37,6 +37,17 @@ go build -o compound ./cmd/compound
 No external dependencies — pure stdlib (`crypto/sha256`, `encoding/json`,
 `os/exec`). Cross-compile with `GOOS=darwin GOARCH=arm64 go build ./cmd/compound`.
 
+### Local testing in a real Claude session
+
+```bash
+scripts/install-local.sh          # test + build, then install into ~/.claude
+```
+
+Builds `compound` to `~/.local/bin`, copies the `/ce-*` commands and hooks into
+`~/.claude/`, and wires the hooks into `~/.claude/settings.json` (backing up any
+existing one). Then open `claude` in any repo and run `/ce-start <request>`.
+`--skip-tests` for faster iteration; `--uninstall` to remove it.
+
 ## How it runs
 
 - **Model A — headless:** `compound run --task "…" --runner mock` is the
