@@ -40,6 +40,13 @@ exactly one policy/transition implementation.
 
 ## 0. Entry — triage front door
 
+### `compound triage`
+Print the heuristic classification of a request WITHOUT seeding anything. Used
+by `/ce-start` to show the agent a proposal it can confirm or override.
+```
+compound triage --task "<request>"   # → category + proposed (phase, track)
+```
+
 ### `compound start`
 Classify a request and seed the cycle in the right phase, instead of always
 starting at `brainstorm`.
@@ -214,9 +221,12 @@ Read back the audit stream — the compliance trail and eval dataset.
 ### `compound run` — the orchestrator loop
 ```
 compound run --task "<description>"
-             [--runner claude|codex|mock]
-             [--scheme NAME] [--max-attempts 3] [--from-phase brainstorm]
+             [--runner claude|codex|mock] [--as CATEGORY] [--confirm]
+             [--scheme NAME]
 ```
+- `--confirm` asks the agent (a one-shot classification) to confirm/override the
+  heuristic triage category before seeding; falls back to the heuristic on any
+  error. Skipped when `--as` is given.
 Runs `Orchestrator.execute`: for each phase it builds a `WorkUnit` (scoped
 tools), invokes the runner, interprets the result, runs the verification gate at
 `codeReview`, applies the transition, and checkpoints — until `done`/`failed`.

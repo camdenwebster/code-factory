@@ -131,6 +131,29 @@ func cmdStart(args []string) int {
 	return exitOK
 }
 
+// ---- triage (heuristic proposal, no seed) --------------------------------
+func cmdTriage(args []string) int {
+	fs := flag.NewFlagSet("triage", flag.ContinueOnError)
+	c := bindCommon(fs)
+	task := fs.String("task", "", "the request to classify")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if *task == "" {
+		return fail("--task is required")
+	}
+	tr := core.Triage(*task)
+	if c.json {
+		b, _ := json.MarshalIndent(tr, "", "  ")
+		fmt.Println(string(b))
+	} else {
+		fmt.Printf("proposal: %s → phase '%s' (track %s). "+
+			"Categories: feature|bug|chore|strategy|ideate|refresh|pulse.\n",
+			tr.Category, tr.Phase, tr.Track)
+	}
+	return exitOK
+}
+
 // triage resolves a category from an explicit override or the heuristic.
 func triage(task, as string) (core.TriageResult, error) {
 	if as != "" {
@@ -465,6 +488,7 @@ func cmdRun(args []string) int {
 	c := bindCommon(fs)
 	task := fs.String("task", "", "task description")
 	as := fs.String("as", "", "override triage category (feature|bug|chore|strategy|ideate|refresh|pulse)")
+	confirm := fs.Bool("confirm", false, "ask the agent to confirm/override the triage category")
 	runnerName := fs.String("runner", "mock", "mock|claude|codex")
 	scheme := fs.String("scheme", "", "xcodebuild scheme")
 	if err := fs.Parse(args); err != nil {
@@ -483,6 +507,19 @@ func cmdRun(args []string) int {
 	tr, err := triage(*task, *as)
 	if err != nil {
 		return fail("%v", err)
+	}
+	// Optional agent confirmation: the heuristic proposes, the agent disposes.
+	// Skipped when the category was set explicitly via --as.
+	if *confirm && *as == "" {
+		if tg, ok := r.(runner.Triager); ok {
+			if cat, e := tg.ConfirmCategory(*task, tr.Category); e == nil {
+				if cat != tr.Category {
+					fmt.Printf("agent re-triaged %s → %s\n", tr.Category, cat)
+				}
+				p, trk := cat.Seed()
+				tr = core.TriageResult{Category: cat, Phase: p, Track: trk}
+			}
+		}
 	}
 	s := core.NewState()
 	s.Phase, s.Track, s.Scheme = tr.Phase, tr.Track, *scheme

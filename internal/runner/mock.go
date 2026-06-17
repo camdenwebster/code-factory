@@ -5,10 +5,19 @@ import "github.com/camdenwebster/code-factory/internal/core"
 // Mock is a scripted runner: it returns a canned StructuredResult per phase.
 // Used by the invariant/integration tests and `compound run --runner mock`.
 type Mock struct {
-	Results map[core.Phase]StructuredResult
+	Results  map[core.Phase]StructuredResult
+	Category core.Category // optional ConfirmCategory override ("" => echo proposed)
 }
 
 func (m Mock) Identifier() string { return "mock" }
+
+// ConfirmCategory lets tests script an agent re-triage; empty echoes the proposal.
+func (m Mock) ConfirmCategory(_ string, proposed core.Category) (core.Category, error) {
+	if m.Category != "" {
+		return m.Category, nil
+	}
+	return proposed, nil
+}
 
 func (m Mock) Run(u WorkUnit) (Result, error) {
 	sr, ok := m.Results[u.Phase]

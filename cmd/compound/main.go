@@ -13,7 +13,7 @@ const usage = `compound — CompoundEngine orchestration CLI
 
 Usage: compound <command> [flags]
 
-Entry:      start             (triage a request -> seed the right phase)
+Entry:      triage  start     (classify a request; seed the right phase)
 State:      init  phase  state  rehydrate
 Policy:     policy            (PreToolUse firewall)
 Verify:     verify            (Stop gate)
@@ -34,6 +34,8 @@ func dispatch(args []string) int {
 	switch cmd {
 	case "start":
 		return cmdStart(rest)
+	case "triage":
+		return cmdTriage(rest)
 	case "init":
 		return cmdInit(rest)
 	case "phase":
