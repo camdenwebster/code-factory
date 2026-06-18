@@ -294,15 +294,17 @@ sequenceDiagram
 <!-- ===================== POLICY ===================== -->
 <section id="policy">
   <h2><span class="n">06</span>Per-phase tool policy</h2>
-  <p class="lede">The firewall <code>compound policy</code> enforces. Read-only phases keep the agent to
-  <em>what</em>, not <em>how</em>; only <code>work</code>/<code>debug</code> may mutate; <code>codeReview</code> may verify but not edit.</p>
+  <p class="lede">The firewall <code>compound policy</code> enforces. Planning phases "plan, don't code":
+  they may write their own <code>docs/</code> and the engine's <code>.compound/</code> control files, but not
+  source. Only <code>work</code>/<code>debug</code> may mutate source or run shell; <code>codeReview</code> may verify but not edit.
+  Meta-tools (Skill, AskUserQuestion, …) are never governed by the firewall.</p>
   <table>
-    <tr><th>Phase</th><th>read</th><th>shell</th><th>build / test</th><th>edit</th><th>write <code>docs/</code></th></tr>
-    <tr><td><code>strategy · ideate · brainstorm · plan</code></td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-    <tr><td><code>work · debug</code></td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td></tr>
-    <tr><td><code>codeReview</code></td><td class="ok">✓</td><td class="no">✗</td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td></tr>
-    <tr><td><code>compound · compoundRefresh · productPulse</code></td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✓</td></tr>
-    <tr><td><code>done · failed</code></td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+    <tr><th>Phase</th><th>read</th><th>shell</th><th>build / test</th><th>edit source</th><th>write <code>docs/</code></th><th>write <code>.compound/</code></th></tr>
+    <tr><td><code>strategy · ideate · brainstorm · plan</code></td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+    <tr><td><code>work · debug</code></td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+    <tr><td><code>codeReview</code></td><td class="ok">✓</td><td class="no">✗</td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✓</td></tr>
+    <tr><td><code>compound · compoundRefresh · productPulse</code></td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+    <tr><td><code>done · failed</code></td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
   </table>
 </section>
 

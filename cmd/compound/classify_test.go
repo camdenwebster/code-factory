@@ -16,6 +16,8 @@ func TestClassifyDocsPathTraversal(t *testing.T) {
 	}{
 		{"docs/solutions/x.md", core.ClassWriteDocs},
 		{"/repo/docs/solutions/x.md", core.ClassWriteDocs},
+		{".compound/result.json", core.ClassControl}, // engine control file
+		{"/repo/.compound/state.json", core.ClassControl},
 		{"docs/../cmd/compound/main.go", core.ClassMutate}, // traversal must NOT be docs
 		{"/repo/docs/../secret.go", core.ClassMutate},
 		{"../docs/x.md", core.ClassMutate}, // escapes upward
@@ -45,6 +47,16 @@ func TestClassifyCompoundCommandNotTest(t *testing.T) {
 	for _, c := range cases {
 		if got := classifyTool("Bash", bashInput(c.cmd)); got != c.want {
 			t.Errorf("classify Bash %q = %s, want %s", c.cmd, got, c.want)
+		}
+	}
+}
+
+// Meta-tools must not be governed by the phase firewall (the deadlock bug:
+// Skill/AskUserQuestion were classified as deny-everywhere).
+func TestClassifyMetaToolsAreRead(t *testing.T) {
+	for _, name := range []string{"AskUserQuestion", "Skill", "Task", "TodoWrite", "ExitPlanMode"} {
+		if got := classifyTool(name, nil); got != core.ClassRead {
+			t.Errorf("%s should classify as read (allowed), got %s", name, got)
 		}
 	}
 }

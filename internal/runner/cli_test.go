@@ -79,9 +79,15 @@ func TestCLIRunnerCodexSandboxPerPhase(t *testing.T) {
 	if !slices.Contains(gotArgs, "workspace-write") {
 		t.Fatalf("work should be workspace-write, got %v", gotArgs)
 	}
+	// Planning phases now write their docs, so they need write access too.
 	r.Run(WorkUnit{Phase: core.PhasePlan, WorkingDir: dir}) //nolint:errcheck
+	if !slices.Contains(gotArgs, "workspace-write") {
+		t.Fatalf("plan should be workspace-write (writes docs), got %v", gotArgs)
+	}
+	// codeReview is the read-only one (verify, don't edit).
+	r.Run(WorkUnit{Phase: core.PhaseCodeReview, WorkingDir: dir}) //nolint:errcheck
 	if !slices.Contains(gotArgs, "read-only") {
-		t.Fatalf("plan should be read-only, got %v", gotArgs)
+		t.Fatalf("codeReview should be read-only, got %v", gotArgs)
 	}
 }
 

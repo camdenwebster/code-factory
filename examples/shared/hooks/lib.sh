@@ -47,8 +47,11 @@ classify_tool() {
     Edit|Write|apply_patch)
       local fp
       fp="$(jqr '.tool_input.file_path // .tool_input.path // .tool_input.input.path // ""')"
-      # Reject any traversal; only un-escaped docs/ paths count as write_docs.
-      if [[ "$fp" != *..* && ( "$fp" == docs/* || "$fp" == */docs/* ) ]]; then
+      # .compound/ is the engine's control plane; docs/ is documentation; both
+      # are writable in planning phases. Anything else is a source mutation.
+      if [[ "$fp" == .compound/* || "$fp" == */.compound/* || "$fp" == .compound ]]; then
+        echo control
+      elif [[ "$fp" != *..* && ( "$fp" == docs/* || "$fp" == */docs/* ) ]]; then
         echo write_docs
       else echo mutate; fi ;;
     Bash|shell)
@@ -63,7 +66,9 @@ classify_tool() {
         echo test
       else echo shell; fi ;;
     mcp__*) echo read ;;   # tighten per-server in production
-    *)      echo other ;;
+    # Unknown tools (Skill, AskUserQuestion, Task, TodoWrite, …) are not
+    # workspace mutations — allow them by classifying as read.
+    *)      echo read ;;
   esac
 }
 
@@ -72,20 +77,20 @@ classify_tool() {
 policy_allows() {
   local phase="$1" cls="$2"
   case "$phase" in
-    strategy|ideate|brainstorm|plan)        [[ "$cls" == read ]] ;;
-    work|debug)                             [[ "$cls" =~ ^(read|shell|test|mutate|write_docs)$ ]] ;;
-    codeReview)                             [[ "$cls" =~ ^(read|test)$ ]] ;;
-    compound|compoundRefresh|productPulse)  [[ "$cls" =~ ^(read|write_docs)$ ]] ;;
+    strategy|ideate|brainstorm|plan)        [[ "$cls" =~ ^(read|write_docs|control)$ ]] ;;
+    work|debug)                             return 0 ;;
+    codeReview)                             [[ "$cls" =~ ^(read|test|control)$ ]] ;;
+    compound|compoundRefresh|productPulse)  [[ "$cls" =~ ^(read|write_docs|control)$ ]] ;;
     *)                                      return 1 ;;
   esac
 }
 
 allowed_summary() {
   case "$1" in
-    strategy|ideate|brainstorm|plan)        echo "read/search only (WHAT, not HOW)" ;;
+    strategy|ideate|brainstorm|plan)        echo "read + writes to docs/ and .compound/ (no source edits or shell)" ;;
     work|debug)                             echo "read, edit, shell, build/test" ;;
-    codeReview)                             echo "read + build/test only (no edits)" ;;
-    compound|compoundRefresh|productPulse)  echo "read + writes under docs/ only" ;;
+    codeReview)                             echo "read + build/test + .compound/ writes (no source edits)" ;;
+    compound|compoundRefresh|productPulse)  echo "read + writes under docs/ and .compound/" ;;
     *)                                      echo "none" ;;
   esac
 }

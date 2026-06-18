@@ -23,20 +23,33 @@ func classifyTool(name string, input map[string]any) core.ToolClass {
 	case "NotebookEdit", "MultiEdit":
 		return core.ClassMutate
 	case "Edit", "Write", "apply_patch":
-		if isDocsPath(firstString(input, "file_path", "path")) {
+		fp := firstString(input, "file_path", "path")
+		switch {
+		case isControlPath(fp):
+			return core.ClassControl // .compound/ — the engine's own files
+		case isDocsPath(fp):
 			return core.ClassWriteDocs
+		default:
+			return core.ClassMutate
 		}
-		return core.ClassMutate
 	case "Bash", "shell":
 		if looksLikeTest(commandString(input)) {
 			return core.ClassTest
 		}
 		return core.ClassShell
 	}
-	if strings.HasPrefix(name, "mcp__") {
-		return core.ClassRead
+	// Unknown tools (Skill, AskUserQuestion, Task, TodoWrite, mcp__*, …) are not
+	// workspace mutations — the phase firewall governs edits/shell, not these.
+	return core.ClassRead
+}
+
+// isControlPath reports whether a write targets the engine's .compound/ dir.
+func isControlPath(fp string) bool {
+	if fp == "" {
+		return false
 	}
-	return core.ClassOther
+	c := filepath.ToSlash(filepath.Clean(fp))
+	return c == ".compound" || strings.HasPrefix(c, ".compound/") || strings.Contains(c, "/.compound/")
 }
 
 // isDocsPath reports whether a write target resolves under docs/ WITHOUT

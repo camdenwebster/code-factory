@@ -99,16 +99,21 @@ var claudeToolsForClass = map[core.ToolClass][]string{
 	core.ClassTest:      {"Bash(swift test:*)", "Bash(swift build:*)", "Bash(xcodebuild:*)"},
 	core.ClassMutate:    {"Edit", "Write", "MultiEdit"},
 	core.ClassWriteDocs: {"Write"},
+	core.ClassControl:   {"Write"}, // .compound/result.json etc. (path-checked by the hook)
 }
 
-// codexSandbox picks the sandbox mode for a phase: writable only where the
-// policy permits mutation or doc writes.
+// codexSandbox picks the sandbox mode for a phase. Every active phase except
+// codeReview writes something (docs and/or the .compound/ control files), so
+// they need workspace-write. Codex's sandbox can't path-scope (apply_patch is
+// not covered by PreToolUse — openai/codex#16732), so on Codex the "no source
+// edits" rule for planning phases is advisory (AGENTS.md) rather than enforced;
+// on Claude the PreToolUse hook enforces it by path.
 func codexSandbox(p core.Phase) string {
 	switch p {
-	case core.PhaseWork, core.PhaseDebug, core.PhaseCompound, core.PhaseCompoundRefresh, core.PhaseProductPulse:
-		return "workspace-write"
-	default:
+	case core.PhaseCodeReview, core.PhaseDone, core.PhaseFailed:
 		return "read-only"
+	default:
+		return "workspace-write"
 	}
 }
 
