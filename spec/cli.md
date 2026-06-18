@@ -138,7 +138,18 @@ compound advance --event <PhaseEvent>
 `planNeedsDeepening`, `codeWritten`, `reviewApproved`, `reviewBlocked`,
 `compoundCaptured`, `routeToDebug`, `refreshRequested`, `pulseRequested`, …
 
-**From a structured result** (preferred — runs the orchestrator's `interpret`):
+**Toward a phase** (explicit, idempotent — used by the `/ce-<phase>` commands):
+```
+compound advance --to <phase>
+```
+Advances exactly one legal forward edge from the current phase toward `<phase>`
+(brainstorm→plan, plan→work|debug, work|debug→codeReview, codeReview→compound).
+No-op when already at `<phase>`; refuses non-adjacent jumps and refuses
+`compound` until the verification gate has set `Evidence`. This is what makes
+invoking `/ce-plan` actually move the machine to `plan`, even if the previous
+phase never wrote a `result.json`. Consumes any stale `result.json`.
+
+**From a structured result** (the richer automatic path — runs `interpret`):
 ```
 compound advance --from-result <FILE>
 ```

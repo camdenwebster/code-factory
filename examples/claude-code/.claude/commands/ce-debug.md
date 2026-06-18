@@ -5,7 +5,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 You are in the **debug** phase (bug track). Reproduce, then fix.
 
-!`compound init --phase debug --track bug --if-absent >/dev/null; compound state`
+!`compound init --phase debug --track bug --if-absent >/dev/null; compound advance --to debug >/dev/null 2>&1; compound state`
 
 Search prior fixes FIRST:
 !`compound search --terms "$ARGUMENTS"`

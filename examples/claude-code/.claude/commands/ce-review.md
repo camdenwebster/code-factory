@@ -4,7 +4,7 @@ allowed-tools: Read, Grep, Glob, Bash(swift test:*), Bash(xcodebuild:*), Bash(co
 ---
 You are in the **codeReview** phase. You may read and run tests, but not edit.
 
-!`compound init --phase codeReview --if-absent >/dev/null; compound state`
+!`compound init --phase codeReview --if-absent >/dev/null; compound advance --to codeReview >/dev/null 2>&1; compound state`
 
 Review the diff and produce findings, each with a priority and a confidence:
 - **p1** = must fix (blocks compounding), **p2** = should, **p3** = nice.

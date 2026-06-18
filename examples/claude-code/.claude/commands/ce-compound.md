@@ -4,7 +4,7 @@ allowed-tools: Read, Grep, Glob, Write, Bash(compound:*)
 ---
 You are in the **compound** phase. Writes are limited to `docs/`.
 
-!`compound init --phase compound --if-absent >/dev/null; compound state`
+!`compound init --phase compound --if-absent >/dev/null; compound advance --to compound 2>&1; compound state`
 
 Capture what was learned as a SolutionDoc. Compose the JSON and write it via the
 store (which validates the two-track schema and files it by category):

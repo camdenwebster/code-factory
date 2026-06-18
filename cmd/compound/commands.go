@@ -339,6 +339,7 @@ func cmdAdvance(args []string) int {
 	fs := flag.NewFlagSet("advance", flag.ContinueOnError)
 	c := bindCommon(fs)
 	event := fs.String("event", "", "PhaseEvent kind")
+	to := fs.String("to", "", "advance one legal forward edge toward this phase (idempotent)")
 	fromResult := fs.String("from-result", "", "StructuredResult JSON file (runs interpret)")
 	refPath := fs.String("ref", "", "produced artifact path")
 	refKind := fs.String("kind", "", "produced artifact kind")
@@ -351,6 +352,10 @@ func cmdAdvance(args []string) int {
 	s, err := c.load()
 	if err != nil {
 		return fail("%v", err)
+	}
+
+	if *to != "" {
+		return advanceTo(c, s, core.Phase(*to))
 	}
 
 	var ev core.Event
@@ -383,6 +388,82 @@ func cmdAdvance(args []string) int {
 	}
 	fmt.Println(s.Phase)
 	return exitOK
+}
+
+// advanceTo moves the machine one legal forward edge toward target. It is
+// idempotent (no-op when already at target) and refuses non-adjacent or gated
+// jumps — so a /ce-<phase> command reliably drives the transition even when the
+// agent never wrote a result.json, without letting anyone skip a stage.
+func advanceTo(c *ctx, s core.MachineState, target core.Phase) int {
+	if s.Phase == target {
+		fmt.Println(s.Phase) // already there
+		return exitOK
+	}
+	if target == core.PhaseCompound && s.Phase == core.PhaseCodeReview && s.Evidence == nil {
+		return fail("cannot compound: the verification gate has not passed — run the tests first")
+	}
+	ev, ok := forwardEdge(s, target, c.dir)
+	if !ok {
+		return fail("cannot advance from %s to %s — finish the intervening phase(s) first", s.Phase, target)
+	}
+	ns := core.Next(s, ev)
+	if ns.Phase != target {
+		return fail("transition from %s toward %s was rejected (landed on %s)", s.Phase, target, ns.Phase)
+	}
+	if err := checkpoint.Save(c.statePath(), ns); err != nil {
+		return fail("%v", err)
+	}
+	// Any result.json belonged to the phase we just left; it's now stale.
+	_ = os.Remove(filepath.Join(filepath.Dir(c.statePath()), "result.json"))
+	fmt.Println(ns.Phase)
+	return exitOK
+}
+
+// forwardEdge returns the single legal event that moves s.Phase -> target, if
+// they are adjacent on the loop. The gated codeReview->compound edge is allowed
+// only once Evidence exists (Next enforces this too).
+func forwardEdge(s core.MachineState, target core.Phase, dir string) (core.Event, bool) {
+	switch {
+	case s.Phase == core.PhaseBrainstorm && target == core.PhasePlan:
+		return core.Event{Kind: core.EvRequirementsWritten,
+			Ref: latestDoc(dir, "docs/brainstorms", core.KindRequirements)}, true
+	case s.Phase == core.PhasePlan && target == core.PhaseWork:
+		return core.Event{Kind: core.EvPlanWritten, Confidence: s.ConfidenceThreshold,
+			Ref: latestDoc(dir, "docs/plans", core.KindPlan)}, true
+	case s.Phase == core.PhasePlan && target == core.PhaseDebug:
+		return core.Event{Kind: core.EvRouteToDebug}, true
+	case (s.Phase == core.PhaseWork || s.Phase == core.PhaseDebug) && target == core.PhaseCodeReview:
+		return core.Event{Kind: core.EvCodeWritten, Ref: latestDoc(dir, "docs/plans", core.KindDiff)}, true
+	case s.Phase == core.PhaseCodeReview && target == core.PhaseCompound:
+		return core.Event{Kind: core.EvReviewApproved, Review: &core.ReviewReport{}}, true
+	}
+	return core.Event{}, false
+}
+
+// latestDoc returns a ref to the most recently modified .md under root/sub, or nil.
+func latestDoc(root, sub string, kind core.ArtifactKind) *core.ArtifactRef {
+	entries, err := os.ReadDir(filepath.Join(root, sub))
+	if err != nil {
+		return nil
+	}
+	var newest string
+	var newestAt time.Time
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(newestAt) {
+			newestAt, newest = info.ModTime(), e.Name()
+		}
+	}
+	if newest == "" {
+		return nil
+	}
+	return &core.ArtifactRef{Path: filepath.ToSlash(filepath.Join(sub, newest)), Kind: kind}
 }
 
 // ---- audit ---------------------------------------------------------------
