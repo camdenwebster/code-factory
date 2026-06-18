@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: build · vet · test · lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: gofmt
+        run: |
+          out=$(gofmt -l cmd internal)
+          if [ -n "$out" ]; then
+            echo "These files are not gofmt-clean:"; echo "$out"; exit 1
+          fi
+
+      - name: build
+        run: go build ./...
+
+      - name: vet
+        run: go vet ./...
+
+      # The invariant suite is the runtime proof of the determinism guarantees
+      # (can't compound without Evidence; deepen/retries bounded; illegal
+      # transitions refused). -race guards the orchestrator/runner concurrency.
+      - name: test
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@v0.6.1 ./...
+
+      # Recovers the compile-time exhaustiveness Go lacks vs Swift sum types:
+      # a defaultless switch over Phase/EventKind/ProblemType that misses a new
+      # case fails the build.
+      - name: exhaustive
+        run: go run github.com/nishanths/exhaustive/cmd/exhaustive@v0.12.0 -default-signifies-exhaustive ./...
+
+  shell:
+    name: hook scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bash syntax
+        run: for f in examples/shared/hooks/*.sh; do bash -n "$f"; done
+
+      # shellcheck is preinstalled on ubuntu-latest runners.
+      - name: shellcheck
+        run: shellcheck --severity=warning examples/shared/hooks/*.sh

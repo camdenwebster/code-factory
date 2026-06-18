@@ -1,0 +1,56 @@
+{
+  "//": "CompoundEngine hooks for Codex CLI — Claude-Code-compatible hooks.json.",
+  "//2": "Place in a Codex hooks-config layer. Use EITHER this file OR the [hooks]",
+  "//3": "table in config.toml, not both in the same layer. Replace /ABS/PATH/TO.",
+
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABS/PATH/TO/code-factory/examples/shared/hooks/session-start.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+
+    "PreToolUse": [
+      {
+        "matcher": "shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABS/PATH/TO/code-factory/examples/shared/hooks/pre-tool-use.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABS/PATH/TO/code-factory/examples/shared/hooks/post-tool-use.sh"
+          }
+        ]
+      }
+    ],
+
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABS/PATH/TO/code-factory/examples/shared/hooks/stop.sh",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}

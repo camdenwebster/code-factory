@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CompoundEngine — System Specification</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --ink:#e6edf3; --muted:#9da7b3;
+    --line:#30363d; --accent:#7ee787; --accent2:#79c0ff; --warn:#f0883e; --pink:#ff7b9c;
+    --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:16px}
+  header.hero{padding:56px 24px 28px;text-align:center;background:
+    radial-gradient(1200px 360px at 50% -120px,rgba(121,192,255,.18),transparent 70%);
+    border-bottom:1px solid var(--line)}
+  header.hero h1{margin:0 0 8px;font-size:34px;letter-spacing:-.5px}
+  header.hero p{margin:6px auto;max-width:760px;color:var(--muted)}
+  .tag{display:inline-block;margin-top:14px;padding:4px 12px;border:1px solid var(--line);
+    border-radius:999px;color:var(--accent2);font-family:var(--mono);font-size:13px}
+  nav{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;
+    padding:12px;background:rgba(13,17,23,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav a{color:var(--muted);text-decoration:none;font-size:13px;padding:5px 11px;border-radius:8px;font-family:var(--mono)}
+  nav a:hover{color:var(--ink);background:var(--panel2)}
+  main{max-width:1040px;margin:0 auto;padding:8px 24px 80px}
+  section{margin:48px 0;scroll-margin-top:64px}
+  h2{font-size:24px;border-left:3px solid var(--accent);padding-left:12px;margin:0 0 6px}
+  h2 .n{color:var(--muted);font-family:var(--mono);font-size:15px;margin-right:8px}
+  .lede{color:var(--muted);margin:0 0 20px;max-width:820px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:16px 0}
+  .mermaid{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;overflow-x:auto;text-align:center}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--accent2);font-weight:600}
+  td code,th code{font-family:var(--mono);font-size:13px}
+  code{background:#0b0f15;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-family:var(--mono);font-size:13.5px}
+  pre{background:#0b0f15;border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font-family:var(--mono);font-size:13px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .pill{display:inline-block;font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line)}
+  .pA{color:var(--accent2);border-color:#1f3b57;background:#0e1c2b}
+  .pB{color:var(--accent);border-color:#1f4a30;background:#0e2417}
+  .callout{border-left:3px solid var(--warn);background:#211608;border-radius:0 10px 10px 0;padding:14px 18px}
+  .callout b{color:var(--warn)}
+  .ok{color:var(--accent)} .no{color:var(--pink)} .muted{color:var(--muted)}
+  footer{border-top:1px solid var(--line);text-align:center;color:var(--muted);padding:28px;font-size:13px}
+  /* hero svg */
+  .heroSvg{width:100%;height:auto;display:block}
+  .box{fill:var(--panel2);stroke:var(--line);stroke-width:1.5}
+  .core{fill:#0e1c2b;stroke:#1f3b57;stroke-width:2}
+  .kit{fill:#101826;stroke:#243349;stroke-width:1.5}
+  .lbl{fill:var(--ink);font:600 14px var(--sans)}
+  .sub{fill:var(--muted);font:12px var(--mono)}
+  .ttl{fill:var(--accent2);font:700 14px var(--mono)}
+  .ttlb{fill:var(--accent);font:700 14px var(--mono)}
+  .flow{stroke:#5b6675;stroke-width:2;fill:none;marker-end:url(#arrow)}
+  .flowlbl{fill:var(--muted);font:11px var(--mono)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <h1>CompoundEngine</h1>
+  <p>A harness-agnostic state machine for Compounding Engineering:
+     <code>brainstorm → plan → work → codeReview → compound</code>.
+     One pure core, two ways to run it.</p>
+  <span class="tag">System Specification · v0.1</span>
+</header>
+
+<nav>
+  <a href="#overview">overview</a>
+  <a href="#machine">state machine</a>
+  <a href="#modelA">model A · headless</a>
+  <a href="#modelB">model B · plugin</a>
+  <a href="#cli">cli surface</a>
+  <a href="#policy">tool policy</a>
+  <a href="#persist">persistence</a>
+  <a href="#gap">harness notes</a>
+</nav>
+
+<main>
+
+<!-- ===================== OVERVIEW ===================== -->
+<section id="overview">
+  <h2><span class="n">01</span>Two drivers, one core</h2>
+  <p class="lede">The state machine is the <strong>conductor</strong>, not a plugin. The same
+  pure core (<code>Phase · PhaseEvent · Transition</code>) and the same <code>compound</code> binary
+  power both an unattended <span class="pill pA">Model A · headless</span> orchestrator and an interactive
+  <span class="pill pB">Model B · harness plugin</span>. Only the driver and the I/O seam differ.</p>
+
+  <div class="card">
+  <svg class="heroSvg" viewBox="0 0 960 520" role="img" aria-label="System overview">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#5b6675"/>
+      </marker>
+    </defs>
+
+    <!-- center core -->
+    <rect class="core" x="350" y="48" width="260" height="392" rx="14"/>
+    <text class="ttl" x="480" y="76" text-anchor="middle">compound (shared core)</text>
+
+    <rect class="box" x="370" y="92" width="220" height="120" rx="10"/>
+    <text class="lbl" x="480" y="116" text-anchor="middle">CompoundCore · pure</text>
+    <text class="sub" x="480" y="140" text-anchor="middle">Phase · PhaseEvent</text>
+    <text class="sub" x="480" y="160" text-anchor="middle">Transition.next()</text>
+    <text class="sub" x="480" y="180" text-anchor="middle">ToolPolicy</text>
+
+    <rect class="kit" x="370" y="228" width="220" height="192" rx="10"/>
+    <text class="lbl" x="480" y="252" text-anchor="middle">CompoundKit · impure</text>
+    <text class="sub" x="480" y="278" text-anchor="middle">VerificationGate → Evidence</text>
+    <text class="sub" x="480" y="300" text-anchor="middle">KnowledgeStore (capture+search)</text>
+    <text class="sub" x="480" y="322" text-anchor="middle">CheckpointStore</text>
+    <text class="sub" x="480" y="344" text-anchor="middle">AgentRunner (the seam)</text>
+    <text class="sub" x="480" y="392" text-anchor="middle" style="fill:#5b6675">cross-platform · swift-crypto</text>
+
+    <!-- left: Model A -->
+    <rect class="box" x="40" y="120" width="250" height="250" rx="12"/>
+    <text class="ttlb" x="165" y="148" text-anchor="middle" style="fill:var(--accent2)">Model A · Headless</text>
+    <text class="sub" x="165" y="184" text-anchor="middle">Orchestrator.execute()</text>
+    <text class="sub" x="165" y="210" text-anchor="middle">drives one phase at a time</text>
+    <text class="sub" x="165" y="246" text-anchor="middle">AgentRunner →</text>
+    <text class="sub" x="165" y="268" text-anchor="middle">claude -p / codex exec</text>
+    <text class="sub" x="165" y="304" text-anchor="middle">scoped --allowedTools</text>
+    <text class="sub" x="165" y="326" text-anchor="middle">/ --sandbox per phase</text>
+    <path class="flow" d="M290,245 L350,245"/>
+    <text class="flowlbl" x="320" y="236" text-anchor="middle">runs</text>
+
+    <!-- right: Model B -->
+    <rect class="box" x="670" y="120" width="250" height="250" rx="12"/>
+    <text class="ttlb" x="795" y="148" text-anchor="middle">Model B · Plugin</text>
+    <text class="sub" x="795" y="184" text-anchor="middle">Claude Code / Codex CLI</text>
+    <text class="sub" x="795" y="210" text-anchor="middle">interactive session</text>
+    <text class="sub" x="795" y="246" text-anchor="middle">lifecycle hooks</text>
+    <text class="sub" x="795" y="272" text-anchor="middle">SessionStart · PreToolUse</text>
+    <text class="sub" x="795" y="294" text-anchor="middle">Stop · PostToolUse</text>
+    <text class="sub" x="795" y="330" text-anchor="middle">shell out to compound</text>
+    <path class="flow" d="M670,245 L610,245"/>
+    <text class="flowlbl" x="640" y="236" text-anchor="middle">calls</text>
+
+    <!-- bottom artifacts -->
+    <rect class="kit" x="40" y="408" width="880" height="74" rx="12"/>
+    <text class="lbl" x="480" y="434" text-anchor="middle">File-backed artifacts (the compounding substrate)</text>
+    <text class="sub" x="480" y="460" text-anchor="middle">.compound/state.json · audit.log   ·   docs/{brainstorms,plans,solutions,pulse-reports}</text>
+    <path class="flow" d="M480,440 L480,440"/>
+    <path class="flow" d="M480,420 L480,440" />
+  </svg>
+  </div>
+</section>
+
+<!-- ===================== STATE MACHINE ===================== -->
+<section id="machine">
+  <h2><span class="n">02</span>The state machine</h2>
+  <p class="lede">A pure <code>(State, Event) → State</code> function. Bugs take the <code>debug</code> path,
+  features take <code>work</code>; both converge on <code>codeReview</code>. Confidence-gated planning and bounded
+  retries are encoded in the transitions — the model cannot skip a stage, and loops are provably finite.</p>
+  <pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> brainstorm
+  brainstorm --> plan: requirementsWritten
+  brainstorm --> plan: routeToDebug (track=bug)
+  plan --> plan: low confidence (deepen &lt;= max)
+  plan --> work: planWritten &gt;= threshold (knowledge)
+  plan --> debug: planWritten &gt;= threshold (bug)
+  plan --> failed: deepen exhausted
+  work --> codeReview: codeWritten
+  debug --> codeReview: codeWritten
+  codeReview --> codeReview: verificationPassed (reviewers run)
+  codeReview --> work: verificationFailed or reviewBlocked
+  codeReview --> debug: bug-track loopback
+  codeReview --> compound: reviewApproved
+  codeReview --> failed: attempts exhausted
+  compound --> [*]: compoundCaptured
+  compoundRefresh --> [*]: refreshCompleted
+  productPulse --> [*]: pulseWritten
+  </pre>
+  <div class="grid2">
+    <div class="card"><b class="ok">Invariants the shape guarantees</b>
+      <ul class="muted">
+        <li>Can't reach <code>compound</code> without passing <code>Evidence</code> + approved review.</li>
+        <li><code>deepen</code> and verification retries are bounded → no infinite loops.</li>
+        <li>Illegal <code>(phase, event)</code> pairs are refused, recorded, never advanced.</li>
+      </ul>
+    </div>
+    <div class="card"><b class="ok">Anchors &amp; outer loop</b>
+      <ul class="muted">
+        <li><code>strategy · ideate</code> — re-runnable bookends feeding <code>brainstorm</code>.</li>
+        <li><code>productPulse</code> — feeds the <em>next</em> cycle's brainstorm (the outer back-edge).</li>
+        <li><code>compoundRefresh</code> — maintenance over <code>docs/solutions</code>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MODEL A ===================== -->
+<section id="modelA">
+  <h2><span class="n">03</span>Model A — headless <span class="pill pA">CI / unattended</span></h2>
+  <p class="lede"><code>compound run</code> <em>is</em> the orchestrator loop. Phase = invocation boundary:
+  one scoped <code>claude -p</code> / <code>codex exec</code> call per phase, the verification gate runs the tests
+  itself, and the machine checkpoints after every transition (resumable after a crash).</p>
+  <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant O as Orchestrator (compound run)
+  participant R as AgentRunner
+  participant X as claude -p / codex exec
+  participant G as VerificationGate
+  participant K as KnowledgeStore
+  participant S as Checkpoint
+  loop until phase is terminal
+    O->>R: run(WorkUnit for phase)
+    R->>X: headless call (scoped --allowedTools / --sandbox)
+    X-->>R: WorkResult
+    R-->>O: StructuredResult
+    O->>O: interpret() -> PhaseEvent
+    opt phase == codeReview
+      O->>G: verify (swift test / xcodebuild)
+      G-->>O: Evidence or failure
+    end
+    O->>O: Transition.next()
+    opt phase == compound
+      O->>K: write SolutionDoc to docs/solutions
+    end
+    O->>S: checkpoint MachineState
+  end
+  </pre>
+</section>
+
+<!-- ===================== MODEL B ===================== -->
+<section id="modelB">
+  <h2><span class="n">04</span>Model B — harness plugin <span class="pill pB">daily driver</span></h2>
+  <p class="lede">A normal <code>claude</code> / <code>codex</code> session. Lifecycle hooks enforce the same
+  invariants by shelling out to <code>compound</code>. <code>SessionStart</code> resumes state; <code>PreToolUse</code>
+  is the firewall; <code>Stop</code> is the verification gate that refuses to end a turn on red tests.</p>
+  <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Dev
+  participant A as Agent (Claude Code / Codex)
+  participant H as Lifecycle Hooks
+  participant C as compound CLI
+  participant S as .compound/state.json
+  Dev->>A: open session
+  A->>H: SessionStart
+  H->>C: compound rehydrate
+  C->>S: read MachineState
+  C-->>H: additionalContext
+  H-->>A: inject "phase=plan, read-only"
+  Dev->>A: /ce-plan ...
+  A->>H: PreToolUse (Edit)
+  H->>C: compound policy --tool Edit
+  C-->>H: exit 10 (deny + reason)
+  H-->>A: permissionDecision: deny
+  A->>H: Stop (turn end)
+  H->>C: compound verify
+  alt tests fail
+    C-->>H: exit 1
+    H-->>A: decision: block — keep going
+  else tests pass
+    C-->>H: exit 0 (+ Evidence)
+    H->>C: compound advance --from-result
+    C->>S: write next phase
+    H-->>A: allow stop
+  end
+  </pre>
+  <div class="card muted">
+    Because Codex reuses Claude Code's hook wire format, the <em>same</em> hook scripts drive both —
+    see <code>examples/shared/hooks/</code>. Only the config files differ
+    (<code>.claude/settings.json</code> vs <code>~/.codex/config.toml</code>).
+  </div>
+</section>
+
+<!-- ===================== CLI ===================== -->
+<section id="cli">
+  <h2><span class="n">05</span>CLI surface — who calls what</h2>
+  <p class="lede">One binary serves both models. The hooks call the small commands; <code>compound run</code>
+  is the headless driver that internally uses the same ones. Full contract in <code>spec/cli.md</code>.</p>
+  <table>
+    <tr><th>Command</th><th>Purpose</th><th>Called by</th></tr>
+    <tr><td><code>init / state / phase</code></td><td>create &amp; inspect <code>MachineState</code></td><td>setup, debugging</td></tr>
+    <tr><td><code>rehydrate</code></td><td>SessionStart context string</td><td><span class="pill pB">session-start.sh</span></td></tr>
+    <tr><td><code>policy --tool T</code></td><td>allow / deny (exit 10) / ask (11)</td><td><span class="pill pB">pre-tool-use.sh</span></td></tr>
+    <tr><td><code>verify [--scheme]</code></td><td>run tests, hash → <code>Evidence</code></td><td><span class="pill pB">stop.sh</span> · <span class="pill pA">run</span></td></tr>
+    <tr><td><code>advance --from-result</code></td><td><code>interpret()</code> → <code>Transition.next()</code></td><td><span class="pill pB">stop.sh</span> · <span class="pill pA">run</span></td></tr>
+    <tr><td><code>search / capture</code></td><td>local-first retrieval · write <code>SolutionDoc</code></td><td><code>/ce-plan</code> · <code>/ce-compound</code></td></tr>
+    <tr><td><code>audit / log</code></td><td>append-only trail + eval dataset</td><td><span class="pill pB">post-tool-use.sh</span></td></tr>
+    <tr><td><code>prompt --phase P</code></td><td>render phase instructions + tools</td><td><span class="pill pA">run</span> · manual headless</td></tr>
+    <tr><td><code>run --task ...</code></td><td>the full orchestrator loop</td><td><span class="pill pA">Model A driver</span></td></tr>
+  </table>
+</section>
+
+<!-- ===================== POLICY ===================== -->
+<section id="policy">
+  <h2><span class="n">06</span>Per-phase tool policy</h2>
+  <p class="lede">The firewall <code>compound policy</code> enforces. Planning phases "plan, don't code":
+  they may write their own <code>docs/</code> and the engine's <code>.compound/</code> control files, but not
+  source. Only <code>work</code>/<code>debug</code> may mutate source or run shell; <code>codeReview</code> may verify but not edit.
+  Meta-tools (Skill, AskUserQuestion, …) are never governed by the firewall.</p>
+  <table>
+    <tr><th>Phase</th><th>read</th><th>shell</th><th>build / test</th><th>edit source</th><th>write <code>docs/</code></th><th>write <code>.compound/</code></th></tr>
+    <tr><td><code>strategy · ideate · brainstorm · plan</code></td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+    <tr><td><code>work · debug</code></td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+    <tr><td><code>codeReview</code></td><td class="ok">✓</td><td class="no">✗</td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✓</td></tr>
+    <tr><td><code>compound · compoundRefresh · productPulse</code></td><td class="ok">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+    <tr><td><code>done · failed</code></td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+  </table>
+</section>
+
+<!-- ===================== PERSISTENCE ===================== -->
+<section id="persist">
+  <h2><span class="n">07</span>Persistence — the compounding substrate</h2>
+  <p class="lede">Everything worth keeping is a repo-relative file. Capture (<code>compound</code> step) and
+  retrieval (<code>plan</code>/<code>debug</code> search) are the two halves of the loop — capture without retrieval is inert.</p>
+  <pre>
+repo/
+├─ .compound/
+│  ├─ state.json        # MachineState checkpoint (resumable)
+│  ├─ result.json       # StructuredResult handed phase→machine
+│  └─ audit.log         # append-only (phase,event,at) — compliance + evals
+└─ docs/
+   ├─ brainstorms/      # WHAT, not HOW
+   ├─ plans/            # U-IDs, test scenarios, confidence
+   ├─ solutions/        # &lt;category&gt;/*.md  — YAML frontmatter, two tracks
+   │  ├─ ui-bugs/ · performance-issues/ · architecture-patterns/ ...
+   └─ pulse-reports/    # outer feedback loop → next brainstorm</pre>
+</section>
+
+<!-- ===================== GAP ===================== -->
+<section id="gap">
+  <h2><span class="n">08</span>Harness notes &amp; the one real gap</h2>
+  <div class="grid2">
+    <div class="card"><b class="pill pB">Claude Code</b>
+      <ul class="muted">
+        <li><code>${CLAUDE_PROJECT_DIR}</code> expands to repo root — paths just work.</li>
+        <li><code>PreToolUse</code> covers <em>every</em> tool → complete in-session firewall.</li>
+        <li>Settings precedence: managed &gt; local &gt; project &gt; user.</li>
+      </ul>
+    </div>
+    <div class="card"><b class="pill pB">Codex CLI</b>
+      <ul class="muted">
+        <li>Hooks engine is <em>Claude-compatible</em>, stable, default-on.</li>
+        <li>Use absolute hook paths (no <code>${CLAUDE_PROJECT_DIR}</code>).</li>
+        <li>Use <em>either</em> <code>[hooks]</code> in <code>config.toml</code> <em>or</em> <code>hooks.json</code>, not both.</li>
+        <li><code>notify</code> can't gate — fire-and-forget, one event.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout">
+    <b>The gap to design around.</b> On Codex, <code>PreToolUse</code> fires for the
+    <code>shell</code> tool but <em>not yet</em> for <code>apply_patch</code> (file edits) —
+    <code>openai/codex#16732</code>. So the hook alone can't block edits during read-only phases.
+    Mitigation, used in the example configs: enforce read-only phases at the <b>sandbox</b> level
+    (<code>sandbox_mode = "read-only"</code>, or per-phase <code>codex exec --sandbox read-only</code>) so
+    writes are blocked by the OS regardless of tool coverage. The <code>Stop</code> verification gate
+    and audit are unaffected.
+  </div>
+</section>
+
+</main>
+
+<footer>
+  CompoundEngine system specification · generated for the code-factory project ·
+  diagrams render with Mermaid (loads from CDN; raw source remains readable offline).
+</footer>
+
+<script type="module">
+  try {
+    const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default;
+    mermaid.initialize({
+      startOnLoad:true, theme:'dark', securityLevel:'loose',
+      themeVariables:{ fontFamily:'ui-monospace, Menlo, monospace', fontSize:'14px',
+        primaryColor:'#1c2230', primaryBorderColor:'#30363d', primaryTextColor:'#e6edf3',
+        lineColor:'#5b6675', actorBkg:'#0e1c2b', actorBorder:'#1f3b57' }
+    });
+  } catch(e){
+    document.querySelectorAll('.mermaid').forEach(el=>{
+      el.style.whiteSpace='pre'; el.style.fontFamily='ui-monospace,monospace';
+      el.style.color='#9da7b3'; el.style.textAlign='left';
+    });
+  }
+</script>
+</body>
+</html>

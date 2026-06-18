@@ -1,0 +1,59 @@
+# ============================================================================
+# CompoundEngine integration for Codex CLI
+# Location: $CODEX_HOME/config.toml   (default ~/.codex/config.toml)
+#
+# Codex's hooks engine (ClaudeHooksEngine) is Stable and enabled by default and
+# reuses Claude Code's hook wire format, so it runs the SAME scripts under
+# examples/shared/hooks. Use EITHER this inline [hooks] table OR a sibling
+# hooks.json — not both in the same layer (Codex warns if it finds both).
+#
+# IMPORTANT: replace /ABS/PATH/TO/code-factory below with the absolute repo path.
+# Codex does not expand ${CLAUDE_PROJECT_DIR}; hook commands take literal paths.
+# ============================================================================
+
+# ---- Approval + sandbox: the second half of the per-phase firewall ----------
+# Codex's PreToolUse hook does NOT fire for `apply_patch` yet (openai/codex#16732),
+# so file edits can bypass the hook. For interactive single-session use, keep the
+# sandbox conservative; for hard per-phase isolation prefer one `codex exec` per
+# phase with the matching --sandbox flag (see examples/README.md, Model A).
+approval_policy = "on-request"          # untrusted | on-request | never | granular
+sandbox_mode    = "workspace-write"     # read-only | workspace-write | danger-full-access
+
+[sandbox_workspace_write]
+network_access = false                  # no network during edits unless a phase needs it
+
+[features]
+hooks = true                            # explicit; stable + default-on anyway
+
+# ---- Lifecycle hooks (inline form; equivalent to examples/codex/hooks.json) --
+[[hooks.SessionStart]]
+  [[hooks.SessionStart.hooks]]
+  type = "command"
+  command = "/ABS/PATH/TO/code-factory/examples/shared/hooks/session-start.sh"
+  timeout = 15
+
+# PreToolUse reliably covers the `shell` tool. apply_patch is gated by the
+# sandbox above, not here, until upstream coverage lands.
+[[hooks.PreToolUse]]
+matcher = "shell"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "/ABS/PATH/TO/code-factory/examples/shared/hooks/pre-tool-use.sh"
+  timeout = 10
+
+[[hooks.PostToolUse]]
+matcher = "shell"
+  [[hooks.PostToolUse.hooks]]
+  type = "command"
+  command = "/ABS/PATH/TO/code-factory/examples/shared/hooks/post-tool-use.sh"
+
+[[hooks.Stop]]
+  [[hooks.Stop.hooks]]
+  type = "command"
+  command = "/ABS/PATH/TO/code-factory/examples/shared/hooks/stop.sh"
+  timeout = 600
+
+# ---- Legacy notify (optional) -----------------------------------------------
+# Fires ONLY on agent-turn-complete and is fire-and-forget — it CANNOT gate a
+# turn. Use it for desktop pings, not policy. The hooks above do the gating.
+# notify = ["notify-send", "Codex"]
